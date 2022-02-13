@@ -1,0 +1,115 @@
+# proto-file: deeplab2/config.proto
+# proto-message: ExperimentOptions
+#
+# Panoptic-DeepLab with ResNet-50 and output stride 32.
+#
+############### PLEASE READ THIS BEFORE USING THIS CONFIG ###############
+# Before using this config, you need to update the following fields:
+# - experiment_name: Use a unique experiment name for each experiment.
+# - initial_checkpoint: Update the path to the initial checkpoint.
+# - train_dataset_options.file_pattern: Update the path to the
+#   training set. e.g., your_dataset/train*.tfrecord
+# - eval_dataset_options.file_pattern: Update the path to the
+#   validation set, e.g., your_dataset/eval*.tfrecord
+#########################################################################
+#
+# This config provides an example of training Panoptic-DeepLab with ONLY
+# semantic segmentation (i.e., the instance/panoptic segmentation is not
+# trained). This could be used for some datasets that provide only
+# semantic segmentation annotations.
+#
+# For ResNet, see
+# - Kaiming He, et al. "Deep Residual Learning for Image Recognition."
+#   In CVPR, 2016.
+# For Panoptic-DeepLab, see
+# - Bowen Cheng, et al. "Panoptic-DeepLab: A Simple, Strong, and Fast Baseline
+#   for Bottom-Up Panoptic Segmentation." In CVPR, 2020.
+
+# Use a unique experiment_name for each experiment.
+experiment_name: "E001-01"
+model_options {
+  # Update the path to the initial checkpoint (e.g., ImageNet
+  # pretrained checkpoint).
+  #"/home/oscar/Desktop/DeepLab2/pretrained/resnet50_imagenet1k_strong_training_strategy/ckpt-350""
+  #"/home/oscar/Desktop/DeepLab2/pretrained/max_deeplab_l_backbone_imagenet1k_strong_training_strategy/ckpt-350"
+  #"/home/oscar/Desktop/DeepLab2/pretrained/resnet50_beta_imagenet1k_strong_training_strategy/ckpt-350"
+  initial_checkpoint: "/code/pretrained/resnet50_imagenet1k_strong_training_strategy/ckpt-350"
+
+  backbone {
+    #"resnet50" "max_deeplab_l_backbone"
+    name: "resnet50"
+    output_stride: 8
+  }
+  decoder {
+    feature_key: "res5"
+    decoder_channels: 256
+    aspp_channels: 256
+    atrous_rates: 12
+    atrous_rates: 24
+    atrous_rates: 36
+  }
+  deeplab_v3_plus {
+    low_level {
+      feature_key: "res3"
+      channels_project:128
+    }
+    num_classes: 5
+  }
+}
+trainer_options {
+  num_checkpoints_to_keep: 10
+  save_checkpoints_steps: 97
+  save_summaries_steps: 97
+  steps_per_loop: 97
+  loss_options {
+    semantic_loss {#_with_weights
+      name: "softmax_cross_entropy"
+      weight: 1.0
+      top_k_percent: 1.0
+      #weights: [1, 1, 1, 1]
+    }
+  }
+  solver_options {
+    base_learning_rate: 0.000005
+    poly_end_learning_rate: 0.000005
+    weight_decay: 0.0001
+    training_number_of_steps: 11640
+    #23296 160ep 35872
+  }
+}
+train_dataset_options {
+  dataset: "emid_day_avi"
+  # Update the path to training set.  "/home/oscar/Desktop/tfrecordbinary512x384/Train1_1x2*" "/media/oscar/nvme2tb/DATASETS/EMID/20210526/AVI/All/tfrecordbinary512x384/Train1_1x2*"
+  file_pattern: "/code/tfrecords/train*"
+  # Adjust the batch_size accordingly to better fit your GPU/TPU memory.
+  # Also see Q1 in g3doc/faq.md.
+  batch_size: 10
+  crop_size: 385
+  crop_size: 513
+  # Skip resizing.
+  min_resize_value: 0
+  max_resize_value: 0
+  augmentations {
+    min_scale_factor: 0.5
+    max_scale_factor: 2.0
+    scale_factor_step_size: 0.1
+  }
+}
+eval_dataset_options {
+  dataset: "emid_day_avi"
+  # Update the path to validation set.   "/home/oscar/Desktop/tfrecordbinary512x384/Test1_1x2*""/media/oscar/nvme2tb/DATASETS/EMID/20210526/AVI/All/tfrecordbinary512x384/Test1_1x2*"
+  file_pattern: "/code/tfrecords/test*"
+  batch_size: 1
+  crop_size: 385
+  crop_size: 513
+  # Skip resizing.
+  min_resize_value: 0
+  max_resize_value: 0
+}
+evaluator_options {
+  eval_interval: 97
+  continuous_eval_timeout: -1
+  num_vis_samples: 12
+  save_predictions: true
+  save_raw_predictions: true
+}
